@@ -1,0 +1,10 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+.vs/
+*.user
+*.suo
+*.log
+
+# Publish outputs
+[Pp]ublish/

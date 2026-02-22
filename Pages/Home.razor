@@ -1,0 +1,29 @@
+﻿@page "/"
+
+@using Microsoft.AspNetCore.Components.Web
+
+<h3>EnvironmentBoundary in Blazor WASM</h3>
+
+<EnvironmentBoundary Include="Development">
+    <div style="color: red;">
+        ⚠️ Running in Development mode
+    </div>
+</EnvironmentBoundary>
+
+<EnvironmentBoundary Include="Staging">
+    <div style="color: orange;">
+        🛠 Staging environment
+    </div>
+</EnvironmentBoundary>
+
+<EnvironmentBoundary Exclude="Production">
+    <div style="color: green;">
+        ✅ Visible in non-production environments
+    </div>
+</EnvironmentBoundary>
+
+<EnvironmentBoundary Include="Production">
+    <div style="color: blue;">
+        🚀 Production environment
+    </div>
+</EnvironmentBoundary>
