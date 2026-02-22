@@ -1,39 +1,83 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">BlazorWasmEnvDemo</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
+﻿<div class="footer-content">
+    <div class="footer-menu">
+        <NavLink href="/waterreminder" Match="NavLinkMatch.All" class="footer-link">
+            <span class="menu-icon">💧</span>
+            <span class="menu-text">Water Tracker</span>
+        </NavLink>
     </div>
 </div>
 
-<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
-    </nav>
-</div>
-
 @code {
-    private bool collapseNavMenu = true;
-
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
-
-    private void ToggleNavMenu()
+    protected override async Task OnInitializedAsync()
     {
-        collapseNavMenu = !collapseNavMenu;
+        // Initialize if needed
     }
 }
+
+<style>
+    .footer-content {
+        max-width: 1400px;
+        margin: 0 auto;
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 2rem;
+    }
+
+    .footer-menu {
+        display: flex;
+        gap: 1rem;
+        flex: 1;
+    }
+
+    .footer-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        color: rgba(255, 255, 255, 0.85);
+        text-decoration: none;
+        border-radius: 4px;
+        transition: all 0.3s ease;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+
+    .footer-link:hover {
+        color: white;
+        background: rgba(255, 255, 255, 0.15);
+    }
+
+    .footer-link.active {
+        color: white;
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    .menu-icon {
+        font-size: 1rem;
+        line-height: 1;
+    }
+
+    .menu-text {
+        font-size: 0.9rem;
+    }
+
+    @@media (max-width: 768px) {
+        .footer-content {
+            flex-direction: column;
+            gap: 0.75rem;
+            align-items: flex-start;
+        }
+
+        .footer-menu {
+            width: 100%;
+            flex-wrap: wrap;
+        }
+
+        .footer-version {
+            width: 100%;
+        }
+    }
+</style>
+

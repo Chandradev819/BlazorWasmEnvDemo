@@ -1,29 +1,19 @@
-﻿@page "/"
+@page "/"
+@inject NavigationManager Navigation
 
-@using Microsoft.AspNetCore.Components.Web
-
-<h3>EnvironmentBoundary in Blazor WASM 11</h3>
-
-<EnvironmentBoundary Include="Development">
-    <div style="color: red;">
-        ⚠️ Running in Development mode
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <h1 class="display-4">💧 Water Reminder</h1>
+            <p class="lead mt-3">Stay hydrated, stay focused.</p>
+            <p>Redirecting to the Water Reminder app...</p>
+        </div>
     </div>
-</EnvironmentBoundary>
+</div>
 
-<EnvironmentBoundary Include="Staging">
-    <div style="color: orange;">
-        🛠 Staging environment
-    </div>
-</EnvironmentBoundary>
-
-<EnvironmentBoundary Exclude="Production">
-    <div style="color: green;">
-        ✅ Visible in non-production environments
-    </div>
-</EnvironmentBoundary>
-
-<EnvironmentBoundary Include="Production">
-    <div style="color: blue;">
-        🚀 Production environment
-    </div>
-</EnvironmentBoundary>
+@code {
+    protected override void OnInitialized()
+    {
+        Navigation.NavigateTo("/waterreminder", replace: true);
+    }
+}

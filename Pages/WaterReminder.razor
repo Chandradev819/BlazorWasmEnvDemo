@@ -1,0 +1,307 @@
+@page "/waterreminder"
+@inject IJSRuntime JS
+
+@using System.Text.Json
+
+<!-- Hero Section -->
+<div class="water-hero">
+    <div class="container py-5">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <h1 class="display-3 fw-bold text-white mb-2">Stay Hydrated</h1>
+                <p class="lead text-white-50">Your intelligent water reminder for busy professionals. Never miss a moment to drink.</p>
+            </div>
+            <div class="col-lg-4 text-center">
+                <div class="hero-badge">💧</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container mt-5">
+    <!-- Settings Row -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-6">
+            <div class="settings-card">
+                <label class="form-label fw-semibold">Daily Hydration Goal</label>
+                <div class="input-group input-group-lg">
+                    <input class="form-control border-0" type="number" min="250" @bind="GoalMl" style="background: #f8f9fa;" />
+                    <span class="input-group-text border-0" style="background: #f8f9fa;">ml</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="settings-card">
+                <label class="form-label fw-semibold">Reminder Interval</label>
+                <div class="input-group input-group-lg">
+                    <input class="form-control border-0" type="number" min="5" @bind="IntervalMinutes" style="background: #f8f9fa;" />
+                    <span class="input-group-text border-0" style="background: #f8f9fa;">min</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Progress Card -->
+    <div class="card water-progress-card shadow-lg border-0 mb-5">
+        <div class="card-body p-5">
+            <div class="row align-items-end">
+                <div class="col-lg-6">
+                    <h3 class="fw-bold mb-3">Today's Progress</h3>
+                    <div class="progress-wrapper">
+                        <div class="progress water-progress" style="height: 12px;">
+                            <div class="progress-bar progress-bar-animated water-progress-bar" role="progressbar" style="width:@ProgressPercent%; background: linear-gradient(90deg, #00d4ff, #0099ff);">
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between mt-3">
+                            <div>
+                                <div class="text-muted small">Consumed</div>
+                                <div class="h5 fw-bold text-primary">@ProgressMl ml</div>
+                            </div>
+                            <div class="text-end">
+                                <div class="text-muted small">Goal</div>
+                                <div class="h5 fw-bold text-secondary">@GoalMl ml</div>
+                            </div>
+                            <div class="text-end">
+                                <div class="text-muted small">Progress</div>
+                                <div class="h5 fw-bold" style="color: #00d4ff;">@ProgressPercent%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="water-circle">
+                        <div class="circle-fill" style="width: @ProgressPercent%; height: @ProgressPercent%;">
+                            <svg viewBox="0 0 100 100" class="water-svg">
+                                <path d="M 50 0 Q 100 25 100 75 Q 100 100 50 100 Q 0 100 0 75 Q 0 25 50 0" fill="url(#waterGradient)" opacity="0.2"/>
+                                <defs>
+                                    <linearGradient id="waterGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" style="stop-color:#00d4ff;stop-opacity:1" />
+                                        <stop offset="100%" style="stop-color:#0099ff;stop-opacity:1" />
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                        </div>
+                        <div class="circle-text">
+                            <span class="display-4 fw-bold text-primary">@ProgressPercent<small>%</small></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Drink Actions -->
+    <div class="row g-3 mb-5">
+        <div class="col-12">
+            <h4 class="fw-bold mb-3">Quick Actions</h4>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <button class="quick-drink-btn w-100" @onclick="() => QuickDrink(100)">
+                <div class="btn-icon">💧</div>
+                <div class="btn-text">Quick Sip</div>
+                <div class="btn-amount">100 ml</div>
+            </button>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <button class="quick-drink-btn w-100" @onclick="() => QuickDrink(200)">
+                <div class="btn-icon">🥤</div>
+                <div class="btn-text">Small Glass</div>
+                <div class="btn-amount">200 ml</div>
+            </button>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <button class="quick-drink-btn w-100" @onclick="() => QuickDrink(250)">
+                <div class="btn-icon">🍶</div>
+                <div class="btn-text">Standard Glass</div>
+                <div class="btn-amount">250 ml</div>
+            </button>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <button class="quick-drink-btn w-100 reset-btn" @onclick="ResetProgress">
+                <div class="btn-icon">🔄</div>
+                <div class="btn-text">Reset</div>
+                <div class="btn-amount">Today</div>
+            </button>
+        </div>
+    </div>
+
+    <!-- Control Buttons -->
+    <div class="row g-3 mb-5">
+        <div class="col-md-4">
+            <button class="btn btn-primary btn-lg w-100 control-btn start-btn" @onclick="StartAsync">
+                <i class="bi bi-play-circle me-2"></i>Start Reminders
+            </button>
+        </div>
+        <div class="col-md-4">
+            <button class="btn btn-outline-danger btn-lg w-100 control-btn stop-btn" @onclick="StopAsync">
+                <i class="bi bi-stop-circle me-2"></i>Stop
+            </button>
+        </div>
+        <div class="col-md-4">
+            <button class="btn btn-outline-secondary btn-lg w-100 control-btn" @onclick="TriggerNow">
+                <i class="bi bi-bell me-2"></i>Remind Now
+            </button>
+        </div>
+    </div>
+
+    <!-- Info Cards -->
+    <div class="row g-4 mb-5">
+        <div class="col-lg-6">
+            <div class="info-card">
+                <div class="info-icon">⏱️</div>
+                <div>
+                    <h5 class="fw-semibold mb-1">Next Reminder</h5>
+                    <p class="mb-0">@NextTriggerDisplay</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="info-card">
+                <div class="info-icon">💧</div>
+                <div>
+                    <h5 class="fw-semibold mb-1">Last Drink</h5>
+                    <p class="mb-0">@LastDrinkDisplay</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Focus Mode Card -->
+    <div class="card border-0 shadow-sm mb-5" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <div class="card-body p-4 text-white">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <h5 class="card-title text-white fw-bold">🎯 Focus Mode</h5>
+                    <p class="card-text text-white-50">Enable sound notifications to stay focused and get reminded to drink water without distractions.</p>
+                </div>
+                <div class="col-lg-4 text-lg-end">
+                    <div class="form-check form-switch form-check-reverse">
+                        <input class="form-check-input form-check-input-lg" type="checkbox" id="soundToggle" @bind="SoundOn" />
+                        <label class="form-check-label text-white" for="soundToggle">
+                            @(SoundOn ? "Sound On" : "Sound Off")
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+</div>
+
+@code {
+    private int GoalMl { get; set; } = 2000;
+    private int ProgressMl { get; set; } = 0;
+    private int IntervalMinutes { get; set; } = 30;
+    private bool SoundOn { get; set; } = true;
+
+    private string Status { get; set; } = "Stopped";
+    private string UserAgent { get; set; } = string.Empty;
+    private DateTime? LastDrink { get; set; }
+    private DateTime? NextTrigger { get; set; }
+
+    private System.Threading.Timer? uiTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        UserAgent = await JS.InvokeAsync<string>("waterReminder.getUserAgent");
+
+        // load saved state
+        try
+        {
+            var json = await JS.InvokeAsync<string>("waterReminder.loadState");
+            if (!string.IsNullOrEmpty(json))
+            {
+                var state = JsonSerializer.Deserialize<WaterState>(json);
+                if (state != null)
+                {
+                    GoalMl = state.GoalMl > 0 ? state.GoalMl : GoalMl;
+                    ProgressMl = state.ProgressMl;
+                    IntervalMinutes = state.IntervalMinutes > 0 ? state.IntervalMinutes : IntervalMinutes;
+                    SoundOn = state.SoundOn;
+                }
+            }
+        }
+        catch { }
+
+        // start UI timer for countdown/next trigger updates
+        uiTimer = new System.Threading.Timer(async _ => await RefreshNextTrigger(), null, 0, 1000);
+    }
+
+    private async Task RefreshNextTrigger()
+    {
+        try
+        {
+            var iso = await JS.InvokeAsync<string>("waterReminder.getNextTriggerISO");
+            if (!string.IsNullOrEmpty(iso) && DateTime.TryParse(iso, out var dt)) NextTrigger = dt.ToLocalTime();
+            else NextTrigger = null;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch { }
+    }
+
+    private int ProgressPercent => GoalMl <= 0 ? 0 : (int)Math.Min(100, (double)ProgressMl / GoalMl * 100);
+    private string LastDrinkDisplay => LastDrink.HasValue ? LastDrink.Value.ToString("g") : "—";
+    private string NextTriggerDisplay => NextTrigger.HasValue ? (NextTrigger.Value.ToString("t") + " (" + (NextTrigger.Value - DateTime.Now).ToString(@"hh\:mm\:ss") + ")") : "—";
+
+    private async Task StartAsync()
+    {
+        var permission = await JS.InvokeAsync<string>("waterReminder.requestNotificationPermission");
+        if (permission != "granted")
+        {
+            Status = "Notifications not granted";
+            return;
+        }
+
+        await JS.InvokeVoidAsync("waterReminder.startReminders", IntervalMinutes, true);
+        Status = $"Running — every {IntervalMinutes} minute(s)";
+        await SaveStateAsync();
+    }
+
+    private async Task StopAsync()
+    {
+        await JS.InvokeVoidAsync("waterReminder.stopReminders");
+        Status = "Stopped";
+        await SaveStateAsync();
+    }
+
+    private async Task TriggerNow()
+    {
+        if (SoundOn) await JS.InvokeVoidAsync("waterReminder.playBeep");
+        await JS.InvokeVoidAsync("waterReminder.triggerNow");
+    }
+
+    private async Task QuickDrink(int ml)
+    {
+        ProgressMl += ml;
+        LastDrink = DateTime.Now;
+        if (SoundOn) await JS.InvokeVoidAsync("waterReminder.playBeep");
+        await SaveStateAsync();
+    }
+
+    private async Task ResetProgress()
+    {
+        ProgressMl = 0;
+        LastDrink = null;
+        await SaveStateAsync();
+    }
+
+    private async Task SaveStateAsync()
+    {
+        var state = new WaterState { GoalMl = GoalMl, ProgressMl = ProgressMl, IntervalMinutes = IntervalMinutes, SoundOn = SoundOn };
+        try { await JS.InvokeVoidAsync("waterReminder.saveState", state); } catch { }
+    }
+
+    public void Dispose()
+    {
+        uiTimer?.Dispose();
+    }
+
+    private class WaterState
+    {
+        public int GoalMl { get; set; }
+        public int ProgressMl { get; set; }
+        public int IntervalMinutes { get; set; }
+        public bool SoundOn { get; set; }
+    }
+}
