@@ -194,36 +194,37 @@
         await JS.InvokeVoidAsync("waterReminder.saveState", state);
     }
 
-    private async Task LoadStateAsync()
+   private async Task LoadStateAsync()
+{
+    var json = await JS.InvokeAsync<string>("waterReminder.loadState");
+
+    if (string.IsNullOrWhiteSpace(json))
+        return;
+
+    var options = new JsonSerializerOptions
     {
-        var json = await JS.InvokeAsync<string>("waterReminder.loadState");
+        PropertyNameCaseInsensitive = true
+    };
 
-        if (string.IsNullOrWhiteSpace(json))
-            return;
+    var state = JsonSerializer.Deserialize<WaterState>(json, options);
+    if (state == null)
+        return;
 
-        var state = JsonSerializer.Deserialize<WaterState>(json);
-        if (state == null)
-            return;
+    GoalMl = state.GoalMl > 0 ? state.GoalMl : 2000;
+    IntervalMinutes = state.IntervalMinutes > 0 ? state.IntervalMinutes : 30;
+    History = state.History ?? new();
 
-        GoalMl = state.GoalMl > 0 ? state.GoalMl : 2000;
-        IntervalMinutes = state.IntervalMinutes > 0 ? state.IntervalMinutes : 30;
-        History = state.History ?? new();
-
-        if (state.SavedDate == TodayKey)
-        {
-            ProgressMl = state.ProgressMl;
-        }
-        else
-        {
-            if (!string.IsNullOrEmpty(state.SavedDate) && state.ProgressMl > 0)
-                History[state.SavedDate] = state.ProgressMl;
-
-            ProgressMl = 0;
-            await SaveStateAsync();
-        }
-
-        await InvokeAsync(StateHasChanged);
+    if (state.SavedDate == TodayKey)
+    {
+        ProgressMl = state.ProgressMl;
     }
+    else
+    {
+        ProgressMl = 0;
+    }
+
+    await InvokeAsync(StateHasChanged);
+}
 
     private async Task RefreshRunningState()
     {
