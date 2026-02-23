@@ -1,5 +1,5 @@
 ﻿@inherits LayoutComponentBase
-
+@using System.Runtime.InteropServices
 <div class="d-flex flex-column min-vh-100 bg-light">
 
     <!-- ================= NAVBAR ================= -->
@@ -14,13 +14,8 @@
             </a>
 
             <!-- Mobile Toggle -->
-            <button class="navbar-toggler"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#mainNav"
-                    aria-controls="mainNav"
-                    aria-expanded="false"
-                    aria-label="Toggle navigation">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+                    aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
 
@@ -46,10 +41,39 @@
     </main>
 
     <!-- ================= FOOTER ================= -->
-    <footer class="bg-dark text-light text-center py-3 mt-auto">
-        <div class="container small">
-            © @DateTime.Now.Year HydroTrack •
-            Hydration Reminder • Notifications Enabled
+    <footer class="bg-dark text-light mt-auto py-4">
+        <div class="container">
+
+            <div class="row text-center text-md-start align-items-center">
+
+                <!-- Left -->
+                <div class="col-md-4 mb-3 mb-md-0">
+                    <div class="fw-semibold">
+                        © @DateTime.Now.Year HydroTrack
+                    </div>
+                    <div class="small text-secondary">
+                        Smart Hydration Reminder
+                    </div>
+                </div>
+
+                <!-- Center -->
+                <div class="col-md-4 mb-3 mb-md-0 text-md-center fw-semibold">
+                    <span class="badge px-3 py-2">
+                        <p>This app is running on @RuntimeInformation.FrameworkDescription</p>
+                    </span>
+                </div>
+
+                <!-- Right -->
+                <div class="col-md-4 text-md-end">
+                    <a href="https://github.com/Chandradev819" target="_blank"
+                           class="text-decoration-none text-light fw-semibold">
+                        <i class="bi bi-github me-1"></i>
+                        github.com/Chandradev819
+                    </a>
+                </div>
+
+            </div>
+
         </div>
     </footer>
 

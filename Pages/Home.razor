@@ -14,7 +14,7 @@
         </div>
 
         <span class="badge rounded-pill px-4 py-2 fs-6
-                     @(IsRunning ? "bg-success" : "bg-danger")">
+            @(IsRunning ? "bg-success" : "bg-danger")">
             @(IsRunning ? "Running" : "Stopped")
         </span>
     </div>
@@ -31,9 +31,7 @@
                 <div class="col-md-6">
                     <label class="form-label">Daily Goal</label>
                     <div class="input-group">
-                        <input type="number" min="250"
-                               class="form-control"
-                               @bind="GoalMl" />
+                        <input type="number" min="250" class="form-control" @bind="GoalMl" />
                         <span class="input-group-text">ml</span>
                     </div>
                 </div>
@@ -41,9 +39,7 @@
                 <div class="col-md-6">
                     <label class="form-label">Reminder Interval</label>
                     <div class="input-group">
-                        <input type="number" min="5"
-                               class="form-control"
-                               @bind="IntervalMinutes" />
+                        <input type="number" min="5" class="form-control" @bind="IntervalMinutes" />
                         <span class="input-group-text">min</span>
                     </div>
                 </div>
@@ -61,8 +57,7 @@
             </div>
 
             <div class="progress mb-3" style="height:12px;">
-                <div class="progress-bar bg-primary"
-                     style="width:@ProgressPercent%">
+                <div class="progress-bar bg-primary" style="width:@ProgressPercent%">
                 </div>
             </div>
 
@@ -86,26 +81,51 @@
             <h5 class="card-title mb-3">Quick Add</h5>
 
             <div class="row g-3">
-                @foreach (var ml in new[] {100, 200, 250})
+                @foreach (var ml in new[] { 100, 200, 250 })
                 {
                     <div class="col-6 col-md-3">
-                        <button class="btn btn-outline-primary w-100"
-                                @onclick="() => QuickDrink(ml)">
+                        <button class="btn btn-outline-primary w-100" @onclick="() => QuickDrink(ml)">
                             💧 @ml ml
                         </button>
                     </div>
                 }
 
                 <div class="col-6 col-md-3">
-                    <button class="btn btn-outline-danger w-100"
-                            @onclick="ResetProgress">
+                    <button class="btn btn-outline-danger w-100" @onclick="ResetProgress">
                         🔄 Reset
                     </button>
                 </div>
             </div>
         </div>
     </div>
+    <!-- REMINDERS -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h5 class="card-title mb-3">Reminders</h5>
 
+            <div class="row g-3">
+
+                <div class="col-md-4">
+                    <button class="btn btn-success w-100" @onclick="StartAsync" disabled="@IsRunning">
+                        Start
+                    </button>
+                </div>
+
+                <div class="col-md-4">
+                    <button class="btn btn-danger w-100" @onclick="StopAsync" disabled="@(!IsRunning)">
+                        Stop
+                    </button>
+                </div>
+
+                <div class="col-md-4">
+                    <button class="btn btn-secondary w-100" @onclick="TriggerNow">
+                        Remind Now
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
     <!-- WEEKLY SUMMARY -->
     <div class="card shadow-sm">
         <div class="card-body">
@@ -147,8 +167,37 @@
     {
         await LoadStateAsync();
         await RefreshRunningState();
+        // If not running, auto start reminders
+        if (!IsRunning)
+        {
+            await StartAsync();
+        }
+    }
+    private async Task StartAsync()
+    {
+        var permission =
+            await JS.InvokeAsync<string>("waterReminder.requestNotificationPermission");
+
+        if (permission != "granted")
+            return;
+
+        await JS.InvokeVoidAsync("waterReminder.startReminders",
+            IntervalMinutes,
+            false);
+
+        IsRunning = true;
     }
 
+    private async Task StopAsync()
+    {
+        await JS.InvokeVoidAsync("waterReminder.stopReminders");
+        IsRunning = false;
+    }
+
+    private async Task TriggerNow()
+    {
+        await JS.InvokeVoidAsync("waterReminder.triggerNow");
+    }
     private int ProgressPercent =>
         GoalMl > 0 ? Math.Clamp((int)((double)ProgressMl / GoalMl * 100), 0, 100) : 0;
 
@@ -194,37 +243,37 @@
         await JS.InvokeVoidAsync("waterReminder.saveState", state);
     }
 
-   private async Task LoadStateAsync()
-{
-    var json = await JS.InvokeAsync<string>("waterReminder.loadState");
-
-    if (string.IsNullOrWhiteSpace(json))
-        return;
-
-    var options = new JsonSerializerOptions
+    private async Task LoadStateAsync()
     {
-        PropertyNameCaseInsensitive = true
-    };
+        var json = await JS.InvokeAsync<string>("waterReminder.loadState");
 
-    var state = JsonSerializer.Deserialize<WaterState>(json, options);
-    if (state == null)
-        return;
+        if (string.IsNullOrWhiteSpace(json))
+            return;
 
-    GoalMl = state.GoalMl > 0 ? state.GoalMl : 2000;
-    IntervalMinutes = state.IntervalMinutes > 0 ? state.IntervalMinutes : 30;
-    History = state.History ?? new();
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
 
-    if (state.SavedDate == TodayKey)
-    {
-        ProgressMl = state.ProgressMl;
+        var state = JsonSerializer.Deserialize<WaterState>(json, options);
+        if (state == null)
+            return;
+
+        GoalMl = state.GoalMl > 0 ? state.GoalMl : 2000;
+        IntervalMinutes = state.IntervalMinutes > 0 ? state.IntervalMinutes : 30;
+        History = state.History ?? new();
+
+        if (state.SavedDate == TodayKey)
+        {
+            ProgressMl = state.ProgressMl;
+        }
+        else
+        {
+            ProgressMl = 0;
+        }
+
+        await InvokeAsync(StateHasChanged);
     }
-    else
-    {
-        ProgressMl = 0;
-    }
-
-    await InvokeAsync(StateHasChanged);
-}
 
     private async Task RefreshRunningState()
     {
