@@ -1,19 +1,289 @@
 @page "/"
-@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@using System.Text.Json
 
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6 text-center">
-            <h1 class="display-4">💧 Water Reminder</h1>
-            <p class="lead mt-3">Stay hydrated, stay focused.</p>
-            <p>Redirecting to the Water Reminder app...</p>
+<!-- HERO -->
+<section class="bg-primary text-white py-5">
+    <div class="container d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-4">
+        <div>
+            <h1 class="fw-bold mb-2">HydroTrack</h1>
+            <p class="mb-0 opacity-75">
+                A lightweight hydration reminder built with Blazor WebAssembly,
+                Web Notifications API, and Progressive Web App support.
+            </p>
+        </div>
+
+        <span class="badge rounded-pill px-4 py-2 fs-6
+                     @(IsRunning ? "bg-success" : "bg-danger")">
+            @(IsRunning ? "Running" : "Stopped")
+        </span>
+    </div>
+</section>
+
+<div class="container my-5">
+
+    <!-- SETTINGS -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h5 class="card-title mb-4">Settings</h5>
+
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <label class="form-label">Daily Goal</label>
+                    <div class="input-group">
+                        <input type="number" min="250"
+                               class="form-control"
+                               @bind="GoalMl" />
+                        <span class="input-group-text">ml</span>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Reminder Interval</label>
+                    <div class="input-group">
+                        <input type="number" min="5"
+                               class="form-control"
+                               @bind="IntervalMinutes" />
+                        <span class="input-group-text">min</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+
+    <!-- PROGRESS -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Today's Progress</h5>
+                <span class="fw-bold">@ProgressPercent%</span>
+            </div>
+
+            <div class="progress mb-3" style="height:12px;">
+                <div class="progress-bar bg-primary"
+                     style="width:@ProgressPercent%">
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <div>
+                    <small class="text-muted">Consumed</small>
+                    <div class="fw-semibold">@ProgressMl ml</div>
+                </div>
+                <div class="text-end">
+                    <small class="text-muted">Goal</small>
+                    <div class="fw-semibold">@GoalMl ml</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- QUICK ACTIONS -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h5 class="card-title mb-3">Quick Add</h5>
+
+            <div class="row g-3">
+                @foreach (var ml in new[] {100, 200, 250})
+                {
+                    <div class="col-6 col-md-3">
+                        <button class="btn btn-outline-primary w-100"
+                                @onclick="() => QuickDrink(ml)">
+                            💧 @ml ml
+                        </button>
+                    </div>
+                }
+
+                <div class="col-6 col-md-3">
+                    <button class="btn btn-outline-danger w-100"
+                            @onclick="ResetProgress">
+                        🔄 Reset
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- WEEKLY SUMMARY -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h5 class="card-title mb-4">Weekly Summary</h5>
+
+            <div class="row g-3 mb-4">
+                @foreach (var day in GetLast7Days())
+                {
+                    <div class="col-6 col-md-3 col-lg-2">
+                        <div class="border rounded p-3 text-center bg-light">
+                            <small>@day.Date.ToString("ddd")</small>
+                            <div class="fw-bold">@day.Amount ml</div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="text-center">
+                <span class="badge bg-warning text-dark fs-6">
+                    🔥 @Streak Day Streak
+                </span>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 @code {
-    protected override void OnInitialized()
+
+    private int GoalMl { get; set; } = 2000;
+    private int ProgressMl { get; set; }
+    private int IntervalMinutes { get; set; } = 30;
+    private bool IsRunning { get; set; }
+
+    private Dictionary<string, int> History = new();
+    private string TodayKey => DateTime.Today.ToString("yyyy-MM-dd");
+
+    protected override async Task OnInitializedAsync()
     {
-        Navigation.NavigateTo("/waterreminder", replace: true);
+        await LoadStateAsync();
+        await RefreshRunningState();
+    }
+
+    private int ProgressPercent =>
+        GoalMl > 0 ? Math.Clamp((int)((double)ProgressMl / GoalMl * 100), 0, 100) : 0;
+
+    private async Task QuickDrink(int ml)
+    {
+        ProgressMl += ml;
+
+        if (!History.ContainsKey(TodayKey))
+            History[TodayKey] = 0;
+
+        History[TodayKey] += ml;
+
+        await SaveStateAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ResetProgress()
+    {
+        ProgressMl = 0;
+        History[TodayKey] = 0;
+
+        await SaveStateAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SaveStateAsync()
+    {
+        // Keep only last 60 days
+        History = History
+            .OrderByDescending(k => k.Key)
+            .Take(60)
+            .ToDictionary(k => k.Key, v => v.Value);
+
+        var state = new WaterState
+        {
+            GoalMl = GoalMl,
+            ProgressMl = ProgressMl,
+            IntervalMinutes = IntervalMinutes,
+            SavedDate = TodayKey,
+            History = History
+        };
+
+        await JS.InvokeVoidAsync("waterReminder.saveState", state);
+    }
+
+    private async Task LoadStateAsync()
+    {
+        var json = await JS.InvokeAsync<string>("waterReminder.loadState");
+
+        if (string.IsNullOrWhiteSpace(json))
+            return;
+
+        var state = JsonSerializer.Deserialize<WaterState>(json);
+        if (state == null)
+            return;
+
+        GoalMl = state.GoalMl > 0 ? state.GoalMl : 2000;
+        IntervalMinutes = state.IntervalMinutes > 0 ? state.IntervalMinutes : 30;
+        History = state.History ?? new();
+
+        if (state.SavedDate == TodayKey)
+        {
+            ProgressMl = state.ProgressMl;
+        }
+        else
+        {
+            if (!string.IsNullOrEmpty(state.SavedDate) && state.ProgressMl > 0)
+                History[state.SavedDate] = state.ProgressMl;
+
+            ProgressMl = 0;
+            await SaveStateAsync();
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RefreshRunningState()
+    {
+        var iso = await JS.InvokeAsync<string>("waterReminder.getNextTriggerISO");
+        IsRunning = !string.IsNullOrWhiteSpace(iso);
+    }
+
+    private List<DailyRecord> GetLast7Days()
+    {
+        var list = new List<DailyRecord>();
+
+        for (int i = 6; i >= 0; i--)
+        {
+            var date = DateTime.Today.AddDays(-i);
+            var key = date.ToString("yyyy-MM-dd");
+
+            History.TryGetValue(key, out var amount);
+
+            list.Add(new DailyRecord
+            {
+                Date = date,
+                Amount = amount
+            });
+        }
+
+        return list;
+    }
+
+    private int Streak
+    {
+        get
+        {
+            int streak = 0;
+
+            for (int i = 0; i < 60; i++)
+            {
+                var key = DateTime.Today.AddDays(-i).ToString("yyyy-MM-dd");
+
+                if (History.TryGetValue(key, out var amount) && amount >= GoalMl)
+                    streak++;
+                else
+                    break;
+            }
+
+            return streak;
+        }
+    }
+
+    private class WaterState
+    {
+        public int GoalMl { get; set; }
+        public int ProgressMl { get; set; }
+        public int IntervalMinutes { get; set; }
+        public string SavedDate { get; set; } = "";
+        public Dictionary<string, int> History { get; set; } = new();
+    }
+
+    private class DailyRecord
+    {
+        public DateTime Date { get; set; }
+        public int Amount { get; set; }
     }
 }

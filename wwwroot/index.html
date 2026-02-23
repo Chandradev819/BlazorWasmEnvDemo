@@ -4,19 +4,26 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BlazorWasmEnvDemo</title>
+    <title>HydroTrack - Smart Water Reminder</title>
     <base href="/" />
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="theme-color" content="#0099ff" />
+    <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png" />
+
+    <!-- Styles -->
     <link rel="preload" id="webassembly" />
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="css/app.css" />
-    <link rel="icon" type="image/png" href="favicon.png" />
-    <link href="BlazorWasmEnvDemo.styles.css" rel="stylesheet" />
-    <link rel="manifest" href="manifest.webmanifest" />
-    <meta name="theme-color" content="#0d6efd" />
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
+
     <script type="importmap"></script>
 </head>
 
 <body>
+
     <div id="app">
         <svg class="loading-progress">
             <circle r="40%" cx="50%" cy="50%" />
@@ -30,15 +37,13 @@
         <a href="." class="reload">Reload</a>
         <span class="dismiss">🗙</span>
     </div>
+
+    <!-- Blazor -->
     <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
+    <!-- Service Worker -->
+    <script>navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' });</script>
+    <!-- Custom JS -->
     <script src="js/waterReminder.js"></script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('service-worker.js').catch(function (err) {
-                console.warn('Service worker registration failed:', err);
-            });
-        }
-    </script>
 </body>
 
 </html>

@@ -1,27 +1,56 @@
 ﻿@inherits LayoutComponentBase
 
-<div class="app-container">
-    <!-- Top Header -->
-    <header class="app-header">
-        <div class="header-content">
-            <div class="header-brand">
-                <span class="brand-icon">💧</span>
-                <span class="brand-text">HydroTrack</span>
-            </div>
-            <div class="header-title">
-                <h1 class="page-title">Water Reminder</h1>
-                <p class="page-subtitle">Stay hydrated, stay focused</p>
-            </div>
-        </div>
-    </header>
+<div class="d-flex flex-column min-vh-100 bg-light">
 
-    <!-- Main Content -->
-    <main class="page-content">
+    <!-- ================= NAVBAR ================= -->
+    <nav class="navbar navbar-expand-lg navbar-dark shadow-sm"
+         style="background: linear-gradient(135deg, #00d4ff, #0099ff);">
+
+        <div class="container">
+
+            <!-- Brand -->
+            <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="/">
+                💧 HydroTrack
+            </a>
+
+            <!-- Mobile Toggle -->
+            <button class="navbar-toggler"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#mainNav"
+                    aria-controls="mainNav"
+                    aria-expanded="false"
+                    aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <!-- Right Menu -->
+            <div class="collapse navbar-collapse justify-content-end" id="mainNav">
+                <ul class="navbar-nav align-items-lg-center gap-lg-3">
+
+                    <li class="nav-item">
+                        <span class="badge bg-light text-primary fw-semibold">
+                            Blazor WASM
+                        </span>
+                    </li>
+
+                </ul>
+            </div>
+
+        </div>
+    </nav>
+
+    <!-- ================= MAIN CONTENT ================= -->
+    <main class="flex-fill container py-4">
         @Body
     </main>
 
-    <!-- Footer -->
-    <footer class="app-footer">
-        <NavMenu />
+    <!-- ================= FOOTER ================= -->
+    <footer class="bg-dark text-light text-center py-3 mt-auto">
+        <div class="container small">
+            © @DateTime.Now.Year HydroTrack •
+            Hydration Reminder • Notifications Enabled
+        </div>
     </footer>
+
 </div>

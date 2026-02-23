@@ -1,131 +1,240 @@
 window.waterReminder = (function () {
+
     let timerId = null;
     let nextTrigger = null;
+    let audioCtx = null;
 
-    function _nowMs() { return Date.now(); }
-
-    function getUserAgent() {
-        return navigator.userAgent || "";
+    function _nowMs() {
+        return Date.now();
     }
 
+    // =============================
+    // Notification Permission
+    // =============================
     async function requestNotificationPermission() {
         if (!('Notification' in window)) return 'denied';
+
         try {
-            const p = await Notification.requestPermission();
-            return p;
-        } catch (e) {
+            return await Notification.requestPermission();
+        } catch {
             return 'denied';
         }
     }
 
+    // =============================
+    // Audio Beep
+    // =============================
     function playBeep() {
         try {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const o = ctx.createOscillator();
-            const g = ctx.createGain();
-            o.type = 'sine';
-            o.frequency.value = 880;
-            o.connect(g);
-            g.connect(ctx.destination);
-            g.gain.value = 0.0001;
-            o.start();
-            // ramp up quickly
-            g.gain.exponentialRampToValueAtTime(0.1, ctx.currentTime + 0.02);
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            const oscillator = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            oscillator.type = 'sine';
+            oscillator.frequency.value = 880;
+
+            oscillator.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            gain.gain.value = 0.0001;
+            oscillator.start();
+
+            gain.gain.exponentialRampToValueAtTime(0.1, audioCtx.currentTime + 0.02);
+
             setTimeout(() => {
-                g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.2);
-                setTimeout(() => { try { o.stop(); ctx.close(); } catch (e) { } }, 250);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.2);
+                setTimeout(() => {
+                    try { oscillator.stop(); } catch { }
+                }, 250);
             }, 140);
-        } catch (e) { }
+
+        } catch { }
     }
 
-    function _showNotification(title = 'Time to drink water 💧', body = 'Stay hydrated — have a glass of water now.') {
+    // =============================
+    // Show Notification
+    // =============================
+    function _showNotification(
+        title = 'Time to drink water 💧',
+        body = 'Stay hydrated — have a glass of water now.'
+    ) {
         if (!('Notification' in window)) return;
-        if (Notification.permission === 'granted') {
-            try {
-                const options = { body: body, tag: 'water-reminder', renotify: true, vibrate: [100, 50, 100] };
-                if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-                    navigator.serviceWorker.ready.then(reg => reg.showNotification(title, options)).catch(() => {
-                        new Notification(title, options);
-                    });
-                } else {
-                    new Notification(title, options);
-                }
-            } catch (e) { }
-        }
+        if (Notification.permission !== 'granted') return;
+
+        const options = {
+            body: body,
+            tag: 'water-reminder',
+            renotify: true,
+            vibrate: [100, 50, 100]
+        };
+
+        try {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.ready
+                    .then(reg => reg.showNotification(title, options))
+                    .catch(() => new Notification(title, options));
+            } else {
+                new Notification(title, options);
+            }
+        } catch { }
     }
 
+    // =============================
+    // Scheduler
+    // =============================
     function startReminders(intervalMinutes, startImmediately = false) {
+
         stopReminders();
+
         const ms = Math.max(1, Number(intervalMinutes)) * 60 * 1000;
-        if (startImmediately) {
-            triggerNow();
-        }
-        nextTrigger = _nowMs() + ms;
-        timerId = setInterval(() => {
+
+        function scheduleNext() {
             nextTrigger = _nowMs() + ms;
+            _persistNextTrigger();
+
+            timerId = setTimeout(() => {
+                _showNotification();
+                playBeep();
+                scheduleNext();
+            }, ms);
+        }
+
+        if (startImmediately) {
             _showNotification();
             playBeep();
-        }, ms);
-        _persistNextTrigger();
+        }
+
+        scheduleNext();
     }
 
     function stopReminders() {
         if (timerId) {
-            clearInterval(timerId);
+            clearTimeout(timerId);
             timerId = null;
         }
+
         nextTrigger = null;
         _persistNextTrigger();
+
+        if (audioCtx) {
+            try { audioCtx.close(); } catch { }
+            audioCtx = null;
+        }
     }
 
     function triggerNow() {
         _showNotification();
         playBeep();
-        // update next trigger only if timer exists
-        if (timerId) {
-            // leave nextTrigger as-is; consumers can query it
-            _persistNextTrigger();
+    }
+
+    // =============================
+    // Auto Resume After Reopen
+    // =============================
+    function autoResume(intervalMinutes) {
+
+        const val = localStorage.getItem('waterReminder.nextTrigger');
+        if (!val) return;
+
+        const ms = Number(val);
+        if (!ms) return;
+
+        const remaining = ms - _nowMs();
+
+        if (remaining > 0) {
+            timerId = setTimeout(() => {
+                _showNotification();
+                playBeep();
+                startReminders(intervalMinutes);
+            }, remaining);
+        } else {
+            triggerNow();
+            startReminders(intervalMinutes);
         }
     }
 
+    // =============================
+    // Missed Reminder Recovery
+    // =============================
+    function resumeIfMissed() {
+        try {
+            const val = localStorage.getItem('waterReminder.nextTrigger');
+            if (!val) return;
+
+            const ms = Number(val);
+            if (!ms) return;
+
+            if (_nowMs() > ms) {
+                triggerNow();
+            }
+        } catch { }
+    }
+
+    // =============================
+    // Visibility Recovery
+    // =============================
+    document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "visible") {
+            resumeIfMissed();
+        }
+    });
+
+    // =============================
+    // Persistence
+    // =============================
     function _persistNextTrigger() {
         try {
-            if (nextTrigger) localStorage.setItem('waterReminder.nextTrigger', String(nextTrigger));
-            else localStorage.removeItem('waterReminder.nextTrigger');
-        } catch (e) { }
+            if (nextTrigger)
+                localStorage.setItem('waterReminder.nextTrigger', String(nextTrigger));
+            else
+                localStorage.removeItem('waterReminder.nextTrigger');
+        } catch { }
     }
 
     function getNextTriggerISO() {
         try {
             const val = localStorage.getItem('waterReminder.nextTrigger');
             if (!val) return '';
+
             const ms = Number(val);
             if (!ms) return '';
-            const d = new Date(ms);
-            return d.toISOString();
-        } catch (e) { return ''; }
+
+            return new Date(ms).toISOString();
+        } catch {
+            return '';
+        }
     }
 
     function saveState(state) {
-        try { localStorage.setItem('waterReminder.state', JSON.stringify(state || {})); } catch (e) { }
+        try {
+            localStorage.setItem('waterReminder.state', JSON.stringify(state || {}));
+        } catch { }
     }
 
     function loadState() {
         try {
-            const s = localStorage.getItem('waterReminder.state');
-            return s || '';
-        } catch (e) { return ''; }
+            return localStorage.getItem('waterReminder.state') || '';
+        } catch {
+            return '';
+        }
     }
 
+    // =============================
+    // Public API
+    // =============================
     return {
-        getUserAgent: getUserAgent,
-        requestNotificationPermission: requestNotificationPermission,
-        startReminders: startReminders,
-        stopReminders: stopReminders,
-        triggerNow: triggerNow,
-        playBeep: playBeep,
-        saveState: saveState,
-        loadState: loadState,
-        getNextTriggerISO: getNextTriggerISO
+        requestNotificationPermission,
+        startReminders,
+        stopReminders,
+        triggerNow,
+        playBeep,
+        saveState,
+        loadState,
+        getNextTriggerISO,
+        autoResume,
+        resumeIfMissed
     };
+
 })();

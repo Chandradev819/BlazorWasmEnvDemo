@@ -1,42 +1,4 @@
-const CACHE_NAME = 'water-reminder-cache-v1';
-const PRECACHE_URLS = [
-    '/',
-    '/index.html',
-    '/css/app.css',
-    '/js/waterReminder.js'
-];
-
-self.addEventListener('install', event => {
-    event.waitUntil(
-        caches.open(CACHE_NAME).then(cache => cache.addAll(PRECACHE_URLS))
-    );
-    self.skipWaiting();
-});
-
-self.addEventListener('activate', event => {
-    event.waitUntil(
-        caches.keys().then(keys => Promise.all(
-            keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
-        ))
-    );
-    self.clients.claim();
-});
-
-self.addEventListener('fetch', event => {
-    const request = event.request;
-    // Only handle GET requests
-    if (request.method !== 'GET') return;
-
-    event.respondWith(
-        caches.match(request).then(cached => {
-            if (cached) return cached;
-            return fetch(request).then(response => {
-                // put a copy in the runtime cache
-                return caches.open(CACHE_NAME).then(cache => {
-                    try { cache.put(request, response.clone()); } catch (e) { }
-                    return response;
-                });
-            }).catch(() => caches.match('/'));
-        })
-    );
-});
+// In development, always fetch from the network and do not enable offline support.
+// This is because caching would make development more difficult (changes would not
+// be reflected on the first load after each change).
+self.addEventListener('fetch', () => { });
